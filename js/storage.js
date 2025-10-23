@@ -14,6 +14,7 @@ const Storage = {
 
     // Инициализация хранилища
     init: function() {
+        console.log('Инициализация Storage');
         if (!this.isStorageAvailable()) {
             this.showStorageError();
             return false;
@@ -35,9 +36,18 @@ const Storage = {
     },
 
     saveCalculation: function() {
-        if (!this.init()) return;
+        console.log('Сохранение расчета');
+        if (!this.init()) {
+            alert('Локальное хранилище недоступно. Невозможно сохранить результаты.');
+            return;
+        }
 
         const calculationData = this.getCalculationData();
+        if (!calculationData) {
+            alert('Ошибка: не удалось получить данные для сохранения');
+            return;
+        }
+
         let history = JSON.parse(localStorage.getItem('sterilizationHistory') || '[]');
         
         // Добавляем ID и timestamp для лучшей идентификации
@@ -109,49 +119,59 @@ const Storage = {
     },
 
     getCalculationData: function() {
-        const productTypeNames = {
-            juice: "Сок",
-            nectar: "Нектар",
-            fruitDrink: "Морс",
-            milk: "Молоко",
-            liquidDairyPorridge: "Жидкая молочная каша",
-            liquidDairyFreePorridge: "Жидкая безмолочная каша"
-        };
-        
-        const microorganismType = document.getElementById('microorganism').value;
-        const microorganismName = microorganismType === 'custom' ? 
-            "Пользовательский" : Calculations.microorganisms[microorganismType].name;
-        
-        // Получаем текущие значения из интерфейса
-        const flowVelocityElem = document.getElementById('flowVelocity');
-        const sterilizerVolumeElem = document.getElementById('sterilizerVolume');
-        const adjustedDValueElem = document.getElementById('adjustedDValue');
-        const lethalityElem = document.getElementById('lethalityValue');
-        const logReductionElem = document.getElementById('logReduction');
-        const residualConcentrationElem = document.getElementById('residualConcentration');
-        const efficiencyElem = document.getElementById('sterilizationEfficiency');
-        
-        return {
-            productType: productTypeNames[document.getElementById('productType').value] || "Неизвестный продукт",
-            microorganism: microorganismName,
-            pipeDiameter: document.getElementById('pipeDiameter').value,
-            flowRate: document.getElementById('flowRate').value,
-            exposureTime: document.getElementById('exposureTime').value,
-            temperature: document.getElementById('temperature').value,
-            initialLoad: document.getElementById('initialLoad').value,
-            flowVelocity: flowVelocityElem ? flowVelocityElem.textContent : '-',
-            sterilizerVolume: sterilizerVolumeElem ? sterilizerVolumeElem.textContent : '-',
-            adjustedDValue: adjustedDValueElem ? adjustedDValueElem.textContent : '-',
-            lethality: lethalityElem ? lethalityElem.textContent : '-',
-            logReduction: logReductionElem ? logReductionElem.textContent : '-',
-            residualConcentration: residualConcentrationElem ? residualConcentrationElem.textContent : '-',
-            efficiency: efficiencyElem ? efficiencyElem.textContent : '-'
-        };
+        try {
+            const productTypeNames = {
+                juice: "Сок",
+                nectar: "Нектар", 
+                fruitDrink: "Морс",
+                milk: "Молоко",
+                liquidDairyPorridge: "Жидкая молочная каша",
+                liquidDairyFreePorridge: "Жидкая безмолочная каша"
+            };
+            
+            const microorganismType = document.getElementById('microorganism').value;
+            let microorganismName = "Неизвестный";
+            
+            if (microorganismType === 'custom') {
+                microorganismName = "Пользовательский";
+            } else if (typeof Calculations !== 'undefined' && Calculations.microorganisms[microorganismType]) {
+                microorganismName = Calculations.microorganisms[microorganismType].name;
+            }
+            
+            // Получаем текущие значения из интерфейса
+            const getElementValue = (id) => {
+                const elem = document.getElementById(id);
+                return elem ? elem.textContent || elem.value : '-';
+            };
+            
+            return {
+                productType: productTypeNames[document.getElementById('productType').value] || "Неизвестный продукт",
+                microorganism: microorganismName,
+                pipeDiameter: document.getElementById('pipeDiameter') ? document.getElementById('pipeDiameter').value : '-',
+                flowRate: document.getElementById('flowRate') ? document.getElementById('flowRate').value : '-',
+                exposureTime: document.getElementById('exposureTime') ? document.getElementById('exposureTime').value : '-',
+                temperature: document.getElementById('temperature') ? document.getElementById('temperature').value : '-',
+                initialLoad: document.getElementById('initialLoad') ? document.getElementById('initialLoad').value : '-',
+                flowVelocity: getElementValue('flowVelocity'),
+                sterilizerVolume: getElementValue('sterilizerVolume'),
+                adjustedDValue: getElementValue('adjustedDValue'),
+                lethality: getElementValue('lethalityValue'),
+                logReduction: getElementValue('logReduction'),
+                residualConcentration: getElementValue('residualConcentration'),
+                efficiency: getElementValue('sterilizationEfficiency')
+            };
+        } catch (error) {
+            console.error('Ошибка при получении данных расчета:', error);
+            return null;
+        }
     },
 
     displayHistory: function() {
         const historyListElem = document.getElementById('historyList');
-        if (!historyListElem) return;
+        if (!historyListElem) {
+            console.error('Элемент historyList не найден');
+            return;
+        }
         
         if (!this.init()) return;
 
@@ -229,7 +249,10 @@ const Storage = {
     },
 
     clearHistory: function() {
-        if (!this.init()) return;
+        if (!this.init()) {
+            alert('Локальное хранилище недоступно.');
+            return;
+        }
         
         if (confirm("Вы уверены, что хотите очистить всю историю расчетов? Это действие нельзя отменить.")) {
             try {
@@ -269,7 +292,10 @@ const Storage = {
 
     // Экспорт истории в файл
     exportHistory: function() {
-        if (!this.init()) return;
+        if (!this.init()) {
+            alert('Локальное хранилище недоступно.');
+            return;
+        }
         
         try {
             const historyData = localStorage.getItem('sterilizationHistory');
