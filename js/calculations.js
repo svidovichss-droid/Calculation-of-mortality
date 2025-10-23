@@ -12,44 +12,93 @@ const Calculations = {
     },
 
     performCalculation: function() {
-        const params = Calculations.getInputParameters();
-        const results = Calculations.calculateSterilization(params);
-        Calculations.displayResults(results, params);
+        console.log('Выполнение расчета');
+        try {
+            const params = this.getInputParameters();
+            if (!params) {
+                alert('Ошибка: не удалось получить параметры расчета');
+                return;
+            }
+            const results = this.calculateSterilization(params);
+            this.displayResults(results, params);
+        } catch (error) {
+            console.error('Ошибка при расчете:', error);
+            alert('Произошла ошибка при расчете. Проверьте введенные данные.');
+        }
     },
 
     getInputParameters: function() {
-        const pipeDiameter = parseFloat(document.getElementById('pipeDiameter').value) / 1000; // в метры
-        const flowRate = parseFloat(document.getElementById('flowRate').value); // л/ч
-        const exposureTime = parseFloat(document.getElementById('exposureTime').value); // сек
-        const temperature = parseFloat(document.getElementById('temperature').value); // °C
-        const initialLoad = parseFloat(document.getElementById('initialLoad').value); // КОЕ/мл
-        const productType = document.getElementById('productType').value;
-        const microorganismType = document.getElementById('microorganism').value;
-        
-        let dValue, zValue;
-        
-        if (microorganismType === 'custom') {
-            dValue = parseFloat(document.getElementById('dValue').value);
-            zValue = parseFloat(document.getElementById('zValue').value);
-        } else {
-            dValue = this.microorganisms[microorganismType].dValue;
-            zValue = this.microorganisms[microorganismType].zValue;
+        try {
+            const pipeDiameterElem = document.getElementById('pipeDiameter');
+            const flowRateElem = document.getElementById('flowRate');
+            const exposureTimeElem = document.getElementById('exposureTime');
+            const temperatureElem = document.getElementById('temperature');
+            const initialLoadElem = document.getElementById('initialLoad');
+            const productTypeElem = document.getElementById('productType');
+            const microorganismElem = document.getElementById('microorganism');
+
+            if (!pipeDiameterElem || !flowRateElem || !exposureTimeElem || !temperatureElem || 
+                !initialLoadElem || !productTypeElem || !microorganismElem) {
+                throw new Error('Не все необходимые элементы найдены');
+            }
+
+            const pipeDiameter = parseFloat(pipeDiameterElem.value) / 1000; // в метры
+            const flowRate = parseFloat(flowRateElem.value); // л/ч
+            const exposureTime = parseFloat(exposureTimeElem.value); // сек
+            const temperature = parseFloat(temperatureElem.value); // °C
+            const initialLoad = parseFloat(initialLoadElem.value); // КОЕ/мл
+            const productType = productTypeElem.value;
+            const microorganismType = microorganismElem.value;
+            
+            // Проверка на валидность числовых значений
+            if (isNaN(pipeDiameter) || isNaN(flowRate) || isNaN(exposureTime) || 
+                isNaN(temperature) || isNaN(initialLoad)) {
+                throw new Error('Не все числовые значения введены корректно');
+            }
+            
+            let dValue, zValue;
+            
+            if (microorganismType === 'custom') {
+                const dValueElem = document.getElementById('dValue');
+                const zValueElem = document.getElementById('zValue');
+                if (!dValueElem || !zValueElem) {
+                    throw new Error('Не найдены поля для пользовательского микроорганизма');
+                }
+                dValue = parseFloat(dValueElem.value);
+                zValue = parseFloat(zValueElem.value);
+                
+                if (isNaN(dValue) || isNaN(zValue)) {
+                    throw new Error('D-значение или Z-значение введены некорректно');
+                }
+            } else {
+                if (!this.microorganisms[microorganismType]) {
+                    throw new Error('Выбранный микроорганизм не найден в базе данных');
+                }
+                dValue = this.microorganisms[microorganismType].dValue;
+                zValue = this.microorganisms[microorganismType].zValue;
+            }
+            
+            return {
+                pipeDiameter,
+                flowRate,
+                exposureTime,
+                temperature,
+                initialLoad,
+                productType,
+                microorganismType,
+                dValue,
+                zValue
+            };
+        } catch (error) {
+            console.error('Ошибка при получении параметров:', error);
+            alert('Ошибка: ' + error.message);
+            return null;
         }
-        
-        return {
-            pipeDiameter,
-            flowRate,
-            exposureTime,
-            temperature,
-            initialLoad,
-            productType,
-            microorganismType,
-            dValue,
-            zValue
-        };
     },
 
     calculateSterilization: function(params) {
+        console.log('Расчет стерилизации с параметрами:', params);
+        
         // Расчет скорости потока (м/с)
         const crossSectionArea = Math.PI * Math.pow(params.pipeDiameter / 2, 2); // м²
         const flowRateM3PerSec = params.flowRate / 3600 / 1000; // м³/с
@@ -59,19 +108,15 @@ const Calculations = {
         const sterilizerVolume = flowRateM3PerSec * params.exposureTime * 1000; // л
         
         // Расчет скорректированного D-значения для текущей температуры
-        // Формула: D_T = D_121 * 10^((121 - T)/z)
         const adjustedDValue = params.dValue * Math.pow(10, (121 - params.temperature) / params.zValue);
         
         // Расчет летальности (F-значение)
-        // Формула: F = t * 10^((T - 121)/z)
         const lethality = params.exposureTime * Math.pow(10, (params.temperature - 121) / params.zValue);
         
         // Расчет логарифмического снижения
-        // ИСПРАВЛЕННАЯ ФОРМУЛА: logReduction = F / D_121
         const logReduction = lethality / params.dValue;
         
         // Расчет остаточной концентрации
-        // Формула: N = N0 * 10^(-logReduction)
         const residualConcentration = params.initialLoad * Math.pow(10, -logReduction);
         
         return {
@@ -85,22 +130,34 @@ const Calculations = {
     },
 
     displayResults: function(results, params) {
+        console.log('Отображение результатов:', results);
+        
+        // Функция для безопасного обновления элемента
+        const updateElement = (id, value) => {
+            const elem = document.getElementById(id);
+            if (elem) {
+                elem.textContent = value;
+            }
+        };
+
         // Обновление интерфейса с результатами
-        document.getElementById('flowVelocity').textContent = results.flowVelocity.toFixed(3) + " м/с";
-        document.getElementById('sterilizerVolume').textContent = results.sterilizerVolume.toFixed(2) + " л";
-        document.getElementById('adjustedDValue').textContent = results.adjustedDValue.toFixed(4) + " сек";
-        document.getElementById('lethalityValue').textContent = results.lethality.toFixed(2);
-        document.getElementById('logReduction').textContent = results.logReduction.toFixed(2) + " log";
-        document.getElementById('residualConcentration').textContent = results.residualConcentration.toFixed(6) + " КОЕ/мл";
+        updateElement('flowVelocity', results.flowVelocity.toFixed(3) + " м/с");
+        updateElement('sterilizerVolume', results.sterilizerVolume.toFixed(2) + " л");
+        updateElement('adjustedDValue', results.adjustedDValue.toFixed(4) + " сек");
+        updateElement('lethalityValue', results.lethality.toFixed(2));
+        updateElement('logReduction', results.logReduction.toFixed(2) + " log");
+        updateElement('residualConcentration', results.residualConcentration.toFixed(6) + " КОЕ/мл");
         
         // Оценка эффективности
-        Calculations.displayEfficiency(results.logReduction, params.productType);
+        this.displayEfficiency(results.logReduction, params.productType);
         
         // Детали расчета
-        Calculations.displayCalculationDetails(results, params);
+        this.displayCalculationDetails(results, params);
     },
 
     displayEfficiency: function(logReduction, productType) {
+        console.log('Оценка эффективности:', logReduction, productType);
+        
         // Оценка эффективности стерилизации
         let requiredReduction;
         if (productType === 'milk' || productType === 'liquidDairyPorridge' || productType === 'liquidDairyFreePorridge') {
@@ -130,22 +187,30 @@ const Calculations = {
         }
         
         // Обновление интерфейса
-        document.getElementById('sterilizationEfficiency').textContent = efficiency;
+        const efficiencyElem = document.getElementById('sterilizationEfficiency');
+        if (efficiencyElem) {
+            efficiencyElem.textContent = efficiency;
+        }
         
         // Отображение сообщения об эффективности
-        document.getElementById('efficiencyMessage').innerHTML = `
-            <div class="${efficiencyClass}">
-                <div class="${efficiencyClass.includes('success') ? 'success-title' : efficiencyClass.includes('warning') ? 'warning-title' : 'recommendation-title'}">${efficiency}</div>
-                <p>${efficiencyMessage}</p>
-                <p>Требуемое снижение для ${this.getProductTypeName(productType)}: ${requiredReduction} log</p>
-            </div>
-        `;
+        const efficiencyMessageElem = document.getElementById('efficiencyMessage');
+        if (efficiencyMessageElem) {
+            efficiencyMessageElem.innerHTML = `
+                <div class="${efficiencyClass}">
+                    <div class="${efficiencyClass.includes('success') ? 'success-title' : efficiencyClass.includes('warning') ? 'warning-title' : 'recommendation-title'}">${efficiency}</div>
+                    <p>${efficiencyMessage}</p>
+                    <p>Требуемое снижение для ${this.getProductTypeName(productType)}: ${requiredReduction} log</p>
+                </div>
+            `;
+        }
     },
 
     displayCalculationDetails: function(results, params) {
-        // Отображение деталей расчета
-        document.getElementById('calculationSteps').innerHTML = `
-            <div class="calculation-step"><strong>1. Расчет скорости потока:</strong> (${params.flowRate} л/ч) / 3600 / 1000 / (π × (${params.pipeDiameter*1000} мм / 2000)²) = ${results.flowVelocity.toFixed(3)} м/с</div>
+        const calculationStepsElem = document.getElementById('calculationSteps');
+        if (!calculationStepsElem) return;
+        
+        calculationStepsElem.innerHTML = `
+            <div class="calculation-step"><strong>1. Расчет скорости потока:</strong> (${params.flowRate} л/ч) / 3600 / 1000 / (π × (${(params.pipeDiameter*1000).toFixed(1)} мм / 2000)²) = ${results.flowVelocity.toFixed(3)} м/с</div>
             <div class="calculation-step"><strong>2. Расчет рабочего объема стерилизатора:</strong> (${params.flowRate} л/ч / 3600) × ${params.exposureTime} с × 1000 = ${results.sterilizerVolume.toFixed(2)} л</div>
             <div class="calculation-step"><strong>3. Расчет скорректированного D-значения:</strong> ${params.dValue} × 10^((121 - ${params.temperature})/${params.zValue}) = ${results.adjustedDValue.toFixed(4)} сек</div>
             <div class="calculation-step"><strong>4. Расчет летальности (F-значение):</strong> ${params.exposureTime} × 10^((${params.temperature} - 121)/${params.zValue}) = ${results.lethality.toFixed(2)}</div>
