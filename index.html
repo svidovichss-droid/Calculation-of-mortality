@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расчет летальности микроорганизмов для трубчатых стерилизаторов</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Расчет летальности микроорганизмов для трубчатых стерилизаторов</h1>
+            <p class="subtitle">Для молочных продуктов, каш и напитков с учетом опыта Tetra Pak</p>
+        </header>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="calculation">Расчет</div>
+            <div class="tab" data-tab="history">История расчетов</div>
+            <div class="tab" data-tab="info">Информация</div>
+        </div>
+        
+        <div class="tab-content active" id="calculation">
+            <div class="content">
+                <div class="card">
+                    <h2 class="card-title">Параметры стерилизации</h2>
+                    
+                    <div class="form-group">
+                        <label for="productType">Тип продукта:</label>
+                        <select id="productType">
+                            <option value="juice">Сок (pH < 4.5)</option>
+                            <option value="nectar">Нектар (pH ~4.5)</option>
+                            <option value="fruitDrink">Морс (pH < 4.5)</option>
+                            <option value="milk">Молоко (pH ~6.7)</option>
+                            <option value="liquidDairyPorridge">Жидкая молочная каша (pH > 6.4)</option>
+                            <option value="liquidDairyFreePorridge">Жидкая безмолочная каша (pH > 4.5)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="pipeDiameter">Диаметр трубы (мм):</label>
+                        <input type="number" id="pipeDiameter" value="50" min="10" max="200" step="5">
+                        <div class="impact-note">
+                            <strong>Влияние диаметра:</strong> Больший диаметр увеличивает рабочий объем стерилизатора при том же времени выдержки, но может привести к неравномерному прогреву продукта.
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="flowRate">Скорость потока (л/ч):</label>
+                        <input type="number" id="flowRate" value="1000" min="100" max="10000" step="50">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="exposureTime">Время выдержки (сек):</label>
+                        <input type="number" id="exposureTime" value="4" min="1" max="300" step="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="temperature">Температура стерилизации (°C):</label>
+                        <input type="number" id="temperature" value="121" min="100" max="150" step="0.1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="initialLoad">Начальная обсемененность (КОЕ/мл):</label>
+                        <input type="number" id="initialLoad" value="1000" min="1" max="1000000" step="100">
+                        <div class="impact-note">
+                            <strong>Влияние обсемененности:</strong> Более высокая начальная обсемененность требует большего логарифмического снижения для достижения безопасного уровня. На летальность (F-значение) не влияет.
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="microorganism">Целевой микроорганизм:</label>
+                        <select id="microorganism">
+                            <option value="clostridiumBotulinum">Clostridium botulinum (споры)</option>
+                            <option value="bacillusSubtilis">Bacillus subtilis (споры)</option>
+                            <option value="bacillusLicheniformis">Bacillus licheniformis (споры)</option>
+                            <option value="bacillusCereus">Bacillus cereus (споры)</option>
+                            <option value="geobacillusStearothermophilus">Geobacillus stearothermophilus (термофил)</option>
+                            <option value="escherichiaColi">Escherichia coli</option>
+                            <option value="lactobacillus">Lactobacillus</option>
+                            <option value="saccharomycesCerevisiae">Saccharomyces cerevisiae (дрожжи)</option>
+                            <option value="aspergillus">Aspergillus (плесень)</option>
+                            <option value="custom">Пользовательский</option>
+                        </select>
+                    </div>
+                    
+                    <div id="customMicroorganism" style="display: none;">
+                        <div class="form-group">
+                            <label for="dValue">D-значение при 121°C (сек):</label>
+                            <input type="number" id="dValue" value="0.2" min="0.01" step="0.01">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="zValue">Z-значение (°C):</label>
+                            <input type="number" id="zValue" value="10" min="1" max="20" step="0.1">
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="calculateBtn">Рассчитать летальность</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="card-title">Результаты расчета</h2>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Скорость потока (м/с):</span>
+                        <span class="result-value" id="flowVelocity">-</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Рабочий объем стерилизатора (л):</span>
+                        <span class="result-value" id="sterilizerVolume">-</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Скорректированное D-значение:</span>
+                        <span class="result-value" id="adjustedDValue">-</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Летальность (F-значение):</span>
+                        <span class="result-value" id="lethalityValue">-</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Логарифмическое снижение:</span>
+                        <span class="result-value" id="logReduction">-</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Остаточная концентрация:</span>
+                        <span class="result-value" id="residualConcentration">-</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Эффективность стерилизации:</span>
+                        <span class="result-value" id="sterilizationEfficiency">-</span>
+                    </div>
+                    
+                    <div id="efficiencyMessage"></div>
+                    
+                    <div class="calculation-details">
+                        <h3>Детали расчета:</h3>
+                        <div id="calculationSteps"></div>
+                    </div>
+                    
+                    <div class="microorganism-info">
+                        <p><strong>D-значение</strong> - время, необходимое для снижения популяции микроорганизмов на 90% при заданной температуре.</p>
+                        <p><strong>Z-значение</strong> - изменение температуры, необходимое для изменения D-значения в 10 раз.</p>
+                        <p><strong>F-значение</strong> - эквивалентное время стерилизации при 121°C.</p>
+                    </div>
+                    
+                    <div class="button-group" style="margin-top: 20px;">
+                        <button id="saveBtn" class="btn-danger">Сохранить результаты</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="history">
+            <div class="card">
+                <h2 class="card-title">История расчетов</h2>
+                <div id="historyList">
+                    <!-- История будет загружена здесь -->
+                </div>
+                <div class="button-group" style="margin-top: 20px;">
+                    <button id="clearHistoryBtn" class="btn-warning">Очистить историю</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="info">
+            <div class="card">
+                <h2 class="card-title">Технологическая и микробиологическая информация</h2>
+                
+                <div class="info-box">
+                    <div class="info-title">Технологические аспекты</div>
+                    <p>Трубчатые стерилизаторы обеспечивают непрерывную термическую обработку жидких пищевых продуктов. Ключевые параметры:</p>
+                    <ul>
+                        <li><strong>Диаметр трубы</strong> - влияет на скорость потока и распределение температуры. Больший диаметр увеличивает рабочий объем при том же времени выдержки, но может привести к неравномерному прогреву продукта.</li>
+                        <li><strong>Время выдержки</strong> - определяет продолжительность воздействия высокой температуры на продукт</li>
+                        <li><strong>Скорость потока</strong> - влияет на время пребывания продукта в зоне стерилизации</li>
+                        <li><strong>Температура</strong> - основной фактор инактивации микроорганизмов</li>
+                    </ul>
+                </div>
+                
+                <div class="info-box">
+                    <div class="info-title">Микробиологические аспекты</div>
+                    <p>Термическая стерилизация основана на инактивации микроорганизмов и их спор под воздействием высокой температуры:</p>
+                    <ul>
+                        <li><strong>Термоустойчивость</strong> микроорганизмов описывается D- и Z-значениями</li>
+                        <li><strong>Целевые микроорганизмы</strong> для стерилизации соков и жидких продуктов включают спорообразующие бактерии и термофильные микроорганизмы</li>
+                        <li><strong>Летальность (F-значение)</strong> показывает эффективность стерилизационного процесса</li>
+                        <li><strong>Логарифмическое снижение</strong> показывает, на сколько порядков снизилась концентрация микроорганизмов</li>
+                        <li><strong>Начальная обсемененность</strong> влияет на остаточную концентрацию микроорганизмов, но не на летальность процесса</li>
+                    </ul>
+                </div>
+                
+                <div class="recommendation-box">
+                    <div class="recommendation-title">Рекомендации для различных продуктов</div>
+                    <ul>
+                        <li><strong>Соки</strong> - требуют стерилизации при 90-95°C для уничтожения плесневых грибов и дрожжей. Рекомендуемое логарифмическое снижение: 6-8 log.</li>
+                        <li><strong>Нектары</strong> - содержат мякоть, что может потребовать более длительной стерилизации. Рекомендуемое логарифмическое снижение: 6-8 log.</li>
+                        <li><strong>Морсы</strong> - имеют высокую кислотность, что облегчает стерилизацию. Рекомендуемое логарифмическое снижение: 6-8 log.</li>
+                        <li><strong>Молоко</strong> - требует интенсивной стерилизации из-за высокой питательной ценности и риска развития термоустойчивых микроорганизмов. Рекомендуемое логарифмическое снижение: 9-12 log.</li>
+                        <li><strong>Жидкие молочные каши</strong> - требуют наиболее интенсивной стерилизации из-за высокой вязкости, питательной среды и наличия молочных компонентов. Рекомендуемое логарифмическое снижение: 12 log.</li>
+                        <li><strong>Жидкие безмолочные каши</strong> - имеют pH > 4.5, что относит их к низкокислотным продуктам, требующим интенсивной стерилизации. Рекомендуемое логарифмическое снижение: 12 log.</li>
+                    </ul>
+                </div>
+                
+                <div class="info-box">
+                    <div class="info-title">База данных микроорганизмов</div>
+                    <table class="microorganism-table">
+                        <thead>
+                            <tr>
+                                <th>Микроорганизм</th>
+                                <th>D-121°C (сек)</th>
+                                <th>Z-значение (°C)</th>
+                                <th>Примечания</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Clostridium botulinum (споры)</td>
+                                <td>0.2</td>
+                                <td>10</td>
+                                <td>Целевой организм для низкокислотных продуктов</td>
+                            </tr>
+                            <tr>
+                                <td>Bacillus subtilis (споры)</td>
+                                <td>0.5</td>
+                                <td>9</td>
+                                <td>Устойчивый мезофил</td>
+                            </tr>
+                            <tr>
+                                <td>Bacillus licheniformis (споры)</td>
+                                <td>0.8</td>
+                                <td>12</td>
+                                <td>Термоустойчивый организм</td>
+                            </tr>
+                            <tr>
+                                <td>Bacillus cereus (споры)</td>
+                                <td>0.7</td>
+                                <td>10</td>
+                                <td>Важен для молочных продуктов и каш</td>
+                            </tr>
+                            <tr>
+                                <td>Geobacillus stearothermophilus (споры)</td>
+                                <td>4.0</td>
+                                <td>9</td>
+                                <td>Высокотермоустойчивый индикатор</td>
+                            </tr>
+                            <tr>
+                                <td>Escherichia coli</td>
+                                <td>0.05</td>
+                                <td>5</td>
+                                <td>Термочувствительная вегетативная бактерия</td>
+                            </tr>
+                            <tr>
+                                <td>Lactobacillus</td>
+                                <td>0.1</td>
+                                <td>7</td>
+                                <td>Кислотоустойчивая бактерия</td>
+                            </tr>
+                            <tr>
+                                <td>Saccharomyces cerevisiae (дрожжи)</td>
+                                <td>0.03</td>
+                                <td>4</td>
+                                <td>Термочувствительные дрожжи</td>
+                            </tr>
+                            <tr>
+                                <td>Aspergillus (плесень)</td>
+                                <td>0.02</td>
+                                <td>4</td>
+                                <td>Термочувствительная плесень</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="success-box">
+                    <div class="success-title">Опыт Tetra Pak</div>
+                    <p>Согласно стандартам Tetra Pak, коммерческая стерильность достигается при:</p>
+                    <ul>
+                        <li><strong>Логарифмическом снижении 12 log</strong> для низкокислотных продуктов (молоко, жидкие каши)</li>
+                        <li><strong>Логарифмическом снижении 6-8 log</strong> для кислых продуктов (соки, морсы)</li>
+                        <li><strong>Валидации процесса</strong> на 2400-10000 упаковках для статистически значимого подтверждения стерильности</li>
+                    </ul>
+                    <p>Для UHT обработки типичны режимы:</p>
+                    <ul>
+                        <li><strong>Молоко и молочные продукты</strong>: 135-140°C в течение 4-10 секунд</li>
+                        <li><strong>Жидкие каши</strong>: 135-140°C в течение 6-15 секунд</li>
+                        <li><strong>Кислые продукты</strong>: 90-95°C в течение 15-30 секунд</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <div class="footer-content">
+                <span>АО ПРОГРЕСС</span>
+                <span class="footer-separator">|</span>
+                <span>Служба качества</span>
+                <span class="footer-separator">|</span>
+                <span>версия 1.0</span>
+                <span class="footer-separator">|</span>
+                <span>2025</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/calculations.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
