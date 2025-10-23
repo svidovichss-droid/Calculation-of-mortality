@@ -7,7 +7,10 @@ document.addEventListener('DOMContentLoaded', function() {
 const App = {
     init: function() {
         this.bindEvents();
-        Storage.displayHistory();
+        // Инициализируем хранилище и показываем историю
+        if (Storage.init()) {
+            Storage.displayHistory();
+        }
     },
     
     bindEvents: function() {
@@ -43,5 +46,24 @@ const App = {
 
         // Очистка истории
         document.getElementById('clearHistoryBtn').addEventListener('click', Storage.clearHistory);
+
+        // Добавляем кнопку экспорта если её нет
+        this.addExportButton();
+    },
+
+    addExportButton: function() {
+        // Добавляем кнопку экспорта в историю если её там нет
+        const historyTab = document.getElementById('history');
+        if (historyTab && !document.getElementById('exportHistoryBtn')) {
+            const buttonGroup = historyTab.querySelector('.button-group');
+            if (buttonGroup) {
+                const exportBtn = document.createElement('button');
+                exportBtn.id = 'exportHistoryBtn';
+                exportBtn.className = 'btn-warning';
+                exportBtn.textContent = 'Экспорт истории';
+                exportBtn.addEventListener('click', Storage.exportHistory);
+                buttonGroup.appendChild(exportBtn);
+            }
+        }
     }
 };
